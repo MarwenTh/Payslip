@@ -28,3 +28,7 @@ Thumbs.db
 *.log
 
 tahouri.pdf
+*.pdf
+
+# Bundled Poppler binaries (portable, not committed)
+poppler/

@@ -19,11 +19,12 @@ try:
     from pdf2image import convert_from_path
     OCR_AVAILABLE = True
 
-    # Auto-detect common Tesseract install location on Windows
+    # Auto-detect Tesseract on Windows (common install paths)
     _tess_paths = [
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
         r"C:\Users\marwe\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
+        r"C:\Users\marwe\AppData\Local\Tesseract-OCR\tesseract.exe",
     ]
     for _p in _tess_paths:
         if os.path.isfile(_p):
@@ -31,6 +32,37 @@ try:
             break
 except ImportError:
     OCR_AVAILABLE = False
+
+
+def _find_poppler_path() -> str | None:
+    """
+    Locate the Poppler 'bin' directory.
+    Checks:
+      1. A 'poppler' folder bundled alongside this script (portable)
+      2. Common system install paths on Windows
+    Returns the bin path string, or None if not found.
+    """
+    script_dir = Path(__file__).parent.resolve()
+
+    # 1. Bundled portable poppler (any version subfolder)
+    for candidate in script_dir.glob("poppler/**/bin"):
+        if (candidate / "pdftoppm.exe").exists():
+            return str(candidate)
+
+    # 2. System-wide locations
+    system_paths = [
+        r"C:\Program Files\poppler\bin",
+        r"C:\Program Files (x86)\poppler\bin",
+        r"C:\poppler\bin",
+    ]
+    for sp in system_paths:
+        if os.path.isfile(os.path.join(sp, "pdftoppm.exe")):
+            return sp
+
+    return None
+
+
+POPPLER_PATH = _find_poppler_path()
 
 try:
     import pdfplumber
@@ -105,8 +137,18 @@ class PDFExtractorService:
                 "  2. Python packages: pip install pytesseract pdf2image"
             )
 
+        # Resolve poppler path (bundled or system)
+        poppler = POPPLER_PATH
+        if poppler is None:
+            raise RuntimeError(
+                "Poppler not found.\n\n"
+                "Please place the Poppler 'bin' folder inside a 'poppler/' "
+                "subfolder next to app.py, or install it system-wide.\n\n"
+                "Download: https://github.com/oschwartz10612/poppler-windows/releases"
+            )
+
         # Convert PDF pages to PIL images
-        images = convert_from_path(pdf_path, dpi=300)
+        images = convert_from_path(pdf_path, dpi=300, poppler_path=poppler)
         total = len(images)
         pages = []
 
