@@ -502,18 +502,15 @@ class PDFExtractorApp(ctk.CTk):
         self._btn_next.configure(state="normal")
         self._drop_zone.configure(state="normal", text="📄\n\nOpen another PDF\n\nor drag & drop")
 
-        # Detect image-based PDF
+        # Detect image-based PDF — auto-start OCR immediately, no user prompt needed
         if not PDFExtractorService.has_text(result):
-            self._mode_badge.configure(text="⚠ Image-based PDF", text_color=WARNING_COLOR)
-            self._textbox.configure(state="normal")
-            self._textbox.delete("1.0", "end")
-            self._textbox.configure(state="disabled")
+            self._mode_badge.configure(text="⟳ Scanning with OCR…", text_color=OCR_COLOR)
             self._page_title.configure(text=result["file_name"])
             self._page_indicator.configure(text=f"1 / {result['total_pages']}")
-            self._show_ocr_banner()
-            self._status.set("⚠ No text found — try OCR mode", WARNING_COLOR)
+            self._status.set("⟳ No text layer found — starting OCR automatically…", OCR_COLOR)
+            # Trigger OCR straight away without waiting for user input
+            self.after(100, self._on_ocr_requested)
         else:
-            self._hide_ocr_banner()
             mode_label = "OCR" if result["mode"] == "ocr" else "Native"
             self._mode_badge.configure(
                 text=f"✓ {mode_label} mode",
